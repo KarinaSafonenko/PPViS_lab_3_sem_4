@@ -5,6 +5,14 @@ import java.awt.event.ActionEvent;
 import java.awt.Point;
 import  java.awt.Dimension;
 import javax.swing.JScrollPane;
+import javax.swing.JViewport;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import javax.swing.SwingUtilities;
+import java.awt.Rectangle;
+import java.awt.event.MouseWheelListener;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.KeyEvent;
 
 /**
  * Created by Admin on 21.05.2017.
@@ -32,9 +40,10 @@ public class MainWindow {
         pane.setPreferredSize(new Dimension(503,403));
         pane.setAutoscrolls(true);
         MoveListener listener = new MoveListener();
-        panel.addMouseListener(listener);
-        panel.addMouseMotionListener(listener);
-        panel.addMouseWheelListener(new ZoomListener());
+        pane.getViewport().setScrollMode(JViewport.SIMPLE_SCROLL_MODE);
+        pane.getViewport().addMouseListener(listener);
+        pane.getViewport().addMouseMotionListener(listener);
+        pane.addMouseWheelListener(new ZoomListener());
         int res = (int) (panel.getSize().getHeight()/panel.getInitialSize().getHeight()*100 - 100);
         buttons.getScale().setText("Увеличение на " + res + "%");
         baseWindow.add(resultTable.getScroll());
@@ -50,64 +59,95 @@ public class MainWindow {
                 buttons.getCount().setEnabled(false);
             }
         });
+
+        buttons.getChangeScale().addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int res = Integer.valueOf(buttons.getNewScale().getText());
+                buttons.getNewScale().setText(null);
+                if (res>=0){
+                   if (res/25 >= 1) {
+                       int mult = (int) Math.floor(res/25);
+                       panel.setFontSize(panel.getInitialFontSize()+3*mult);
+                   }
+                   if (res/50 >= 1){
+                       int mult = (int) Math.floor(res/50);
+                       panel.setPenSize(panel.getInitialPenSize()+mult);
+                   }
+                   if (res <= 25){
+                       panel.setFontSize(panel.getInitialFontSize());
+                       panel.setPenSize(panel.getInitialPenSize());
+                   }
+                   int zoomHeight = (int)(res*panel.getInitialSize().getHeight()/100);
+                   int zoomWidth = (int)(res*panel.getInitialSize().getWidth()/100);
+                   Dimension newSize = new Dimension((int)panel.getInitialSize().getWidth()+zoomWidth, (int)panel.getInitialSize().getHeight()+zoomHeight);
+                   buttons.getScale().setText("Увеличение на " + res + "%");
+                   panel.setPreferredSize(newSize);
+                   panel.setSize(newSize);
+                   panel.revalidate();
+                }
+            }
+        });
     }
 
-    class MoveListener extends java.awt.event.MouseAdapter {
+    class MoveListener extends MouseAdapter {
 
         private Point start;
 
         @Override
-        public void mousePressed(java.awt.event.MouseEvent e) {
+        public void mousePressed(MouseEvent e) {
             start = e.getPoint();
         }
 
 
         @Override
-        public void mouseReleased(java.awt.event.MouseEvent e) {
+        public void mouseReleased(MouseEvent e) {
         }
 
         @Override
-        public void mouseDragged(java.awt.event.MouseEvent e) {
+        public void mouseDragged(MouseEvent e) {
             if (start != null) {
-                javax.swing.JViewport viewPort = (javax.swing.JViewport) javax.swing.SwingUtilities.getAncestorOfClass(javax.swing.JViewport.class, panel);
+                JViewport viewPort = (JViewport) SwingUtilities.getAncestorOfClass(JViewport.class, panel);
                 if (viewPort != null) {
                     int deltaX = start.x - e.getX();
                     int deltaY = start.y - e.getY();
-                    java.awt.Rectangle view = viewPort.getViewRect();
-                    view.x += deltaX;
-                    view.y += deltaY;
+                    Rectangle view = viewPort.getViewRect();
+                    view.x += deltaX*0.1;
+                    view.y += deltaY*0.1;
                     panel.scrollRectToVisible(view);
-                    baseWindow.repaint();
                 }
             }
         }
     }
 
-    private class ZoomListener implements java.awt.event.MouseWheelListener {
+    private class ZoomListener implements MouseWheelListener {
         @Override
-        public void mouseWheelMoved(java.awt.event.MouseWheelEvent e) {
-            if (e.getPreciseWheelRotation() < 0 && ((e.getModifiers() & java.awt.event.KeyEvent.CTRL_MASK) != 0)) {
-                System.out.println("Case 1");
-                Dimension newSize = new Dimension(panel.getWidth()+100, panel.getHeight()+100);
+        public void mouseWheelMoved(MouseWheelEvent e) {
+            if (e.getPreciseWheelRotation() < 0 && ((e.getModifiers() & KeyEvent.CTRL_MASK) != 0)) {
+                Dimension newSize = new Dimension(panel.getWidth()+125, panel.getHeight()+100);
                 panel.setPreferredSize(newSize);
                 panel.setSize(newSize);
-                System.out.println(panel.getSize());
                 panel.setFontSize(panel.getFontSize()+3);
                 int res = (int) (panel.getSize().getHeight()/panel.getInitialSize().getHeight()*100 - 100);
+                if (res%50 == 0){
+                    panel.setPenSize(panel.getPenSize()+1);
+                }
                 buttons.getScale().setText("Увеличение на " + res + "%");
                 panel.revalidate();
             }
-            if (e.getPreciseWheelRotation() > 0 && ((e.getModifiers() & java.awt.event.KeyEvent.CTRL_MASK) != 0)) {
+            if (e.getPreciseWheelRotation() > 0 && ((e.getModifiers() & KeyEvent.CTRL_MASK) != 0)) {
                 if (panel.getWidth() > panel.getInitialSize().getWidth()) {
-                    System.out.println("Case 2");
-                    Dimension newSize = new Dimension(panel.getWidth() - 100, panel.getHeight() - 100);
+                    Dimension newSize = new Dimension(panel.getWidth() - 125, panel.getHeight() - 100);
                     panel.setPreferredSize(newSize);
                     panel.setSize(newSize);
-                    System.out.println(panel.getSize());
                     if (panel.getFontSize() > 15) {
                         panel.setFontSize(panel.getFontSize()-3);
                     }
                     int res = (int) (panel.getSize().getHeight()/panel.getInitialSize().getHeight()*100 - 100);
+                    if (res%50 == 0 && res >0){
+                        panel.setPenSize(panel.getPenSize()-1);
+                    }
+                    if (res <= 25) panel.setPenSize(1);
                     buttons.getScale().setText("Увеличение на " + res + "%");
                     panel.revalidate();
                     baseWindow.repaint();
@@ -126,9 +166,5 @@ public class MainWindow {
 
     public Table getResultTable() {
         return resultTable;
-    }
-
-    public GraphPanel getPanel() {
-        return panel;
     }
 }

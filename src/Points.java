@@ -26,10 +26,6 @@ public class Points {
         return xList.size();
     }
 
-    public int getSizeY(){
-        return yList.size();
-    }
-
     public List<Double> getxList() {
         return xList;
     }
